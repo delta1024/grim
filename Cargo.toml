@@ -1,0 +1,13 @@
+[workspace]
+members = [
+ "grim-doc",
+"grim-bin",
+]
+
+[workspace.package]
+version = "0.0.1"
+authors = [ "Jacob Stannix" ]
+description = "Grim - a toy programing language created for fun."
+edition = "2021"
+documentation = "./grim-doc"
+
