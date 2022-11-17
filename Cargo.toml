@@ -1,7 +1,7 @@
 [workspace]
 members = [
  "grim-doc",
-"grim-bin",
+ "grim-bin",
 ]
 
 [workspace.package]

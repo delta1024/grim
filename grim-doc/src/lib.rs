@@ -4,7 +4,7 @@
 
    A prototype of the general syntax can be seen below.
    ```skip
-   typedef enum STATE {
+   typedef enum State {
        ONE=13,
        TWO,
        THREE,
@@ -35,8 +35,8 @@
 # Backus-Naur form
 ```skip
 NUMBER     -> ( 0..9 )* ;
-CHAR       -> "'" ( "a".."z" | "A".."Z" ) "'" ;
-STRING     -> "\"" * "\"" ;
+CHAR       -> "'" * "'" ;
+STRING     -> "\"" ( CHAR )* "\"" ;
 IDENTIFIER -> ( "a".."z" | "A".."Z" | NUMBER | "_" )* ;
 
 program    -> ( ( variable | typedef ) ";" )?* "main () {" ( expression ";" )* "}" ;
