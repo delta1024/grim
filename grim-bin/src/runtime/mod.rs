@@ -1,8 +1,11 @@
-use crate::core::{
-    chunk::{Chunk, OpCode},
-    Value,
+use crate::{
+    compiler::scanner::{Error as ErrorToken, Scanner},
+    core::{
+        chunk::{Chunk, OpCode},
+        Value,
+    },
 };
-use std::{fmt::Display, pin::Pin, result};
+use std::{error, fmt::Display, pin::Pin, result};
 
 pub mod ip;
 pub use ip::Ip;
@@ -10,21 +13,26 @@ pub use ip::Ip;
 pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug)]
-pub struct Error(pub String);
+pub struct Error(pub String, pub i32);
 impl Error {
-    fn new<T>(message: &str) -> Result<T> {
-        Err(Self(message.to_owned()))
+    pub fn new<T>(message: &str) -> Result<T> {
+        Err(Self(message.to_owned(), 70))
     }
 }
-
+impl error::Error for Error {}
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
+impl From<ErrorToken> for Error {
+    fn from(e: ErrorToken) -> Self {
+        Self(format!("{}", e), 65)
+    }
+}
 impl From<String> for Error {
     fn from(s: String) -> Self {
-        Self(s)
+        Self(s, 70)
     }
 }
 
@@ -70,11 +78,26 @@ impl Vm {
         self.ip.constant(loc)
     }
 
-    pub fn interpret(&mut self, chunk: Chunk) -> Result<()> {
-        let chunk = self.chunk.insert(Box::pin(chunk));
-        let chunk = chunk.as_ref().get_ref();
-        self.ip = chunk.into();
-        self.run()
+    fn binary_operation(&mut self, code: OpCode) -> Result<()> {
+        let b = self.pop();
+        let a = self.pop();
+        let result: Value = match code {
+            OpCode::Add => a + b,
+            OpCode::Subtract => a - b,
+            OpCode::Divide => a / b,
+            OpCode::Multiply => a * b,
+            _ => unreachable!(),
+        };
+        self.push(result);
+        Ok(())
+    }
+    pub fn interpret(&mut self, source: &str) -> Result<()> {
+        for i in Scanner::new(source) {
+            let token = i?;
+            println!("{:02} {:?} '{}'", token.line, token.id, token.extract());
+        }
+        Ok(())
+        // self.run()
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -100,6 +123,13 @@ impl Vm {
                 OpCode::Constant => {
                     let val = self.read_constant();
                     self.push(val);
+                }
+                OpCode::Add | OpCode::Subtract | OpCode::Divide | OpCode::Multiply => {
+                    self.binary_operation(byte)?;
+                }
+                OpCode::Negate => {
+                    let val = self.pop();
+                    self.push(-val);
                 }
             }
         }

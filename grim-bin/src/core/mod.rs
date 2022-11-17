@@ -1,2 +1,2 @@
 pub mod chunk;
-pub type Value = u32;
+pub type Value = i32;

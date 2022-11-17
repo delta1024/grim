@@ -9,4 +9,5 @@ edition = "2021"
 default = ["trace_execution"]
 trace_execution = []
 [dependencies]
+aopt = "0.6.7"
 
