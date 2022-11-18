@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["trace_execution"]
+default = ["debug"]
+debug = ["print_code", "trace_execution"]
+print_code = []
 trace_execution = []
 [dependencies]
 aopt = "0.6.7"

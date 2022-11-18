@@ -2,7 +2,7 @@ use std::{fmt::Display, marker::PhantomData, result};
 #[derive(Debug)]
 pub struct Error {
     message: String,
-    line: usize,
+    pub line: usize,
 }
 impl Error {
     fn new(message: &str, line: usize) -> Result<Token> {
@@ -14,7 +14,7 @@ impl Error {
 }
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[line {}] {}", self.line, self.message)
+        write!(f, "{}", self.message)
     }
 }
 macro_rules! error {
@@ -66,11 +66,11 @@ impl Iterator for Scanner<'_> {
             self.at_end = true;
             return Some(Ok(self.make_token(TokenType::EOF)));
         };
-        if is_alpha_numer(char) {
-            return Some(self.identifier());
-        }
         if char.is_ascii_digit() {
             return Some(self.number());
+        }
+        if is_alpha_numer(char) {
+            return Some(self.identifier());
         }
         let id = match char {
             '(' => TokenType::LeftParen,
@@ -84,6 +84,14 @@ impl Iterator for Scanner<'_> {
             '/' => TokenType::Slash,
             ',' => TokenType::Comma,
             ';' => TokenType::Semicolon,
+            '&' if self.peek() == Some('&') => {
+                self.advance();
+                TokenType::AndAnd
+            }
+            '|' if self.peek() == Some('|') => {
+                self.advance();
+                TokenType::OrOr
+            }
             '=' if self.peek() == Some('=') => {
                 self.advance();
                 TokenType::EqualEqual
@@ -300,7 +308,7 @@ impl Default for Token {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(PartialEq, Default, Debug, Clone, Copy)]
 pub enum TokenType {
     // Single character tokens
     LeftParen,
@@ -327,6 +335,8 @@ pub enum TokenType {
     DotDot,
     Minus,
     MinusColon,
+    OrOr,
+    AndAnd,
     // Literals
     Number,
     String,

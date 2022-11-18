@@ -1,5 +1,5 @@
 use crate::{
-    compiler::scanner::{Error as ErrorToken, Scanner},
+    compiler::{compile, scanner::Error as ErrorToken, Error as CompilerError},
     core::{
         chunk::{Chunk, OpCode},
         Value,
@@ -15,8 +15,8 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Debug)]
 pub struct Error(pub String, pub i32);
 impl Error {
-    pub fn new<T>(message: &str) -> Result<T> {
-        Err(Self(message.to_owned(), 70))
+    pub fn new<T>(message: String) -> Result<T> {
+        Err(Self(message, 70))
     }
 }
 impl error::Error for Error {}
@@ -30,6 +30,11 @@ impl From<ErrorToken> for Error {
         Self(format!("{}", e), 65)
     }
 }
+impl From<CompilerError> for Error {
+    fn from(e: CompilerError) -> Self {
+        Self(format!("{}", e), 65)
+    }
+}
 impl From<String> for Error {
     fn from(s: String) -> Self {
         Self(s, 70)
@@ -38,8 +43,11 @@ impl From<String> for Error {
 
 macro_rules! error {
     ($string: tt, $($var: expr),*) => {
-      Err(format!($string, $($var,)*).into())
+      Error::new(format!($string, $($var,)*))
     };
+    ($string: tt) => {
+        Error::new($string.into())
+    }
 }
 const STACK_MAX: usize = 255;
 pub struct Vm {
@@ -92,12 +100,9 @@ impl Vm {
         Ok(())
     }
     pub fn interpret(&mut self, source: &str) -> Result<()> {
-        for i in Scanner::new(source) {
-            let token = i?;
-            println!("{:02} {:?} '{}'", token.line, token.id, token.extract());
-        }
-        Ok(())
-        // self.run()
+        let chunk = self.chunk.insert(Box::pin(compile(source)?));
+        self.ip = chunk.as_ref().get_ref().into();
+        self.run()
     }
 
     pub fn run(&mut self) -> Result<()> {
