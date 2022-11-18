@@ -99,4 +99,7 @@ macro_rules! op_code {
     };
 }
 
-op_code! {Return, 0, Constant, 1, Add, 2, Subtract, 3, Divide, 4, Multiply, 5, Negate, 6 }
+op_code! { Return, 0, Constant, 1, Add, 2, Subtract, 3,
+Divide, 4, Multiply, 5, Negate, 6, Nil, 7, True, 8,
+False, 9, Not, 10, Equal, 11, Greater, 12,
+Less, 13 }

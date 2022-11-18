@@ -6,7 +6,6 @@ use super::{
 use crate::core::chunk::OpCode;
 pub(super) fn parse_precedence(parser: &mut Parser, precedence: Precedence) -> Result<()> {
     parser.next();
-    dbg!(parser.previous.id);
     let Some(prefix_rule) = get_rule(parser.previous.id).prefix else {
         return parser.error("Expect expression.");
     };
@@ -24,6 +23,19 @@ pub(super) fn binary(parser: &mut Parser) -> Result<()> {
     parse_precedence(parser, rule.precedence.add_one())?;
 
     let op_code = match op_type {
+        TokenType::BangEqual | TokenType::GreaterEqual | TokenType::LessEqual => {
+            let op1 = match op_type {
+                TokenType::BangEqual => OpCode::Equal,
+                TokenType::GreaterEqual => OpCode::Less,
+                TokenType::LessEqual => OpCode::Greater,
+                _ => unreachable!(),
+            };
+            parser.emit_bytes(op1, OpCode::Not);
+            return Ok(());
+        }
+        TokenType::EqualEqual => OpCode::Equal,
+        TokenType::Greater => OpCode::Greater,
+        TokenType::Less => OpCode::Less,
         TokenType::Plus => OpCode::Add,
         TokenType::Minus => OpCode::Subtract,
         TokenType::Star => OpCode::Multiply,
@@ -54,9 +66,22 @@ pub(super) fn unary(parser: &mut Parser) -> Result<()> {
     parse_precedence(parser, Precedence::Unary)?;
 
     // Emit the operator instruction.
-    match operator_id {
-        TokenType::Minus => parser.emit_byte(OpCode::Negate),
+    let code = match operator_id {
+        TokenType::Bang => OpCode::Not,
+        TokenType::Minus => OpCode::Negate,
         _ => unreachable!(),
-    }
+    };
+    parser.emit_byte(code);
+    Ok(())
+}
+
+pub(super) fn literal(parser: &mut Parser) -> Result<()> {
+    let code = match parser.previous.id {
+        TokenType::False => OpCode::False,
+        TokenType::True => OpCode::True,
+        TokenType::Nil => OpCode::Nil,
+        _ => unreachable!(),
+    };
+    parser.emit_byte(code);
     Ok(())
 }

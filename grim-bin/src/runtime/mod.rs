@@ -2,7 +2,7 @@ use crate::{
     compiler::{compile, scanner::Error as ErrorToken, Error as CompilerError},
     core::{
         chunk::{Chunk, OpCode},
-        Value,
+        TryFromValueError, Value,
     },
 };
 use std::{error, fmt::Display, pin::Pin, result};
@@ -41,6 +41,12 @@ impl From<String> for Error {
     }
 }
 
+impl From<TryFromValueError> for Error {
+    fn from(e: TryFromValueError) -> Self {
+        Self(format!("{}", e), 70)
+    }
+}
+
 macro_rules! error {
     ($string: tt, $($var: expr),*) => {
       Error::new(format!($string, $($var,)*))
@@ -62,14 +68,14 @@ impl Vm {
         Self {
             chunk: None,
             ip: Ip::null(),
-            stack: [0; STACK_MAX],
+            stack: [Value::Nil; STACK_MAX],
             stack_top: 0,
         }
     }
 
-    fn push(&mut self, val: Value) {
+    fn push<T: Into<Value>>(&mut self, val: T) {
         self.stack_top += 1;
-        self.stack[self.stack_top - 1] = val;
+        self.stack[self.stack_top - 1] = val.into();
     }
 
     fn pop(&mut self) -> Value {
@@ -87,13 +93,15 @@ impl Vm {
     }
 
     fn binary_operation(&mut self, code: OpCode) -> Result<()> {
-        let b = self.pop();
-        let a = self.pop();
+        let b: i32 = self.pop().try_into()?;
+        let a: i32 = self.pop().try_into()?;
         let result: Value = match code {
-            OpCode::Add => a + b,
-            OpCode::Subtract => a - b,
-            OpCode::Divide => a / b,
-            OpCode::Multiply => a * b,
+            OpCode::Add => (a + b).into(),
+            OpCode::Subtract => (a - b).into(),
+            OpCode::Divide => (a / b).into(),
+            OpCode::Multiply => (a * b).into(),
+            OpCode::Greater => (a > b).into(),
+            OpCode::Less => (a < b).into(),
             _ => unreachable!(),
         };
         self.push(result);
@@ -129,12 +137,29 @@ impl Vm {
                     let val = self.read_constant();
                     self.push(val);
                 }
-                OpCode::Add | OpCode::Subtract | OpCode::Divide | OpCode::Multiply => {
+                OpCode::Add
+                | OpCode::Subtract
+                | OpCode::Divide
+                | OpCode::Multiply
+                | OpCode::Greater
+                | OpCode::Less => {
                     self.binary_operation(byte)?;
                 }
                 OpCode::Negate => {
-                    let val = self.pop();
+                    let val: i32 = self.pop().try_into()?;
                     self.push(-val);
+                }
+                OpCode::True => self.push(true),
+                OpCode::False => self.push(false),
+                OpCode::Nil => self.push(Value::Nil),
+                OpCode::Not => {
+                    let val = self.pop().is_falsy();
+                    self.push(val);
+                }
+                OpCode::Equal => {
+                    let b = self.pop();
+                    let a = self.pop();
+                    self.push(a == b);
                 }
             }
         }
