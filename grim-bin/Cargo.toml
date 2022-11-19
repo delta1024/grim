@@ -12,4 +12,5 @@ print_code = []
 trace_execution = []
 [dependencies]
 aopt = "0.6.7"
+grim-derive = {path = "../grim-derive"}
 

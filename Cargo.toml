@@ -2,6 +2,7 @@
 members = [
  "grim-doc",
  "grim-bin",
+ "grim-derive",
 ]
 
 [workspace.package]

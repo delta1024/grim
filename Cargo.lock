@@ -77,7 +77,12 @@ name = "grim"
 version = "0.1.0"
 dependencies = [
  "aopt",
+ "grim-derive",
 ]
+
+[[package]]
+name = "grim-derive"
+version = "0.1.0"
 
 [[package]]
 name = "grim-doc"
