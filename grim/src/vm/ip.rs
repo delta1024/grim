@@ -1,6 +1,6 @@
-use crate::core::{
+use crate::lang_core::{
     chunk::{Chunk, Line, OpCode},
-    Value,
+    Type,
 };
 use std::ptr;
 
@@ -24,9 +24,13 @@ pub struct Ip {
     pub tail: *const u8,
     pub current: *const u8,
     pub lines: *const Line,
-    pub constants: *const Value,
+    pub constants: *const Type,
 }
-
+impl Default for Ip {
+    fn default() -> Self {
+        Ip::null()
+    }
+}
 impl Iterator for Ip {
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,7 +45,7 @@ impl Iterator for Ip {
 }
 
 impl Ip {
-    pub fn constant(&self, loc: u8) -> Value {
+    pub fn constant(&self, loc: u8) -> Type {
         let loc = loc as usize;
         unsafe { self.constants.add(loc).read() }
     }
@@ -50,7 +54,7 @@ impl Ip {
         let line = unsafe { self.lines.as_ref().expect("initialized chunk.") };
         line.get_line(loc)
     }
-    pub fn null() -> Self {
+    pub const fn null() -> Self {
         let null = ptr::null();
         Self {
             head: null,
@@ -63,7 +67,7 @@ impl Ip {
     pub fn dissasemble_instruction(&mut self) -> (usize, String) {
         let code = OpCode::from(self.next().expect("end of file"));
         match code {
-            OpCode::Constant => {
+            OpCode::Constant | OpCode::DefineGlobal | OpCode::GetGlobal | OpCode::SetGlobal => {
                 let pos = self.next().expect("end of file");
                 (2, format!("{:?}    {} '{}'", code, pos, self.constant(pos)))
             }

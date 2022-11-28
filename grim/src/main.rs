@@ -4,10 +4,12 @@ use std::{
     process::exit,
 };
 mod compiler;
-mod core;
-mod runtime;
-use runtime::Vm;
-fn run_repl(vm: &mut Vm) -> Result<()> {
+mod err;
+mod lang_core;
+mod vm;
+
+use vm::interpret;
+fn run_repl() -> Result<()> {
     let mut line = String::new();
     loop {
         print!("> ");
@@ -17,29 +19,32 @@ fn run_repl(vm: &mut Vm) -> Result<()> {
             println!();
             return Ok(());
         }
-        if let Err(err) = vm.interpret(&line) {
+        if let Err(err) = interpret(&line) {
             eprintln!("{}", err);
+            vm::VM.lock().reset_stack();
         }
         line = String::new();
     }
 }
-fn run_file(vm: &mut Vm, file: &str) -> Result<()> {
+
+fn run_file(file: &str) -> Result<()> {
     let mut file = File::open(file)?;
     let mut buffer = String::new();
     file.read_to_string(&mut buffer)?;
-    if let Err(err) = vm.interpret(&buffer) {
+    if let Err(err) = interpret(&buffer) {
         eprintln!("{}", err);
         exit(err.1);
     }
     Ok(())
 }
+
 fn main() -> Result<()> {
-    let mut vm = Vm::new();
+    vm::VM.lock().init();
     let opts = std::env::args().collect::<Vec<String>>();
     if opts.len() == 2 {
-        run_file(&mut vm, &opts[0])
+        run_file(&opts[0])
     } else if opts.len() == 1 {
-        run_repl(&mut vm)
+        run_repl()
     } else {
         eprintln!("[usage] grim <file>");
         exit(1)

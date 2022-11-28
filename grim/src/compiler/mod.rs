@@ -1,29 +1,15 @@
-use crate::core::{
-    chunk::{Chunk, OpCode},
-    Value,
-};
-use std::{fmt::Display, result};
+use crate::{allocate_string, lang_core::prelude::*};
+
+use std::result;
 mod functions;
 mod rules;
 pub mod scanner;
 use functions::*;
 
-pub use scanner::{Error as ScannError, Scanner, Token};
-
 use self::scanner::TokenType;
-pub type Result<T> = result::Result<T, Error>;
-#[derive(Debug)]
-pub struct Error(String, usize);
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[line {}] Error {}", self.1, self.0)
-    }
-}
-impl From<ScannError> for Error {
-    fn from(e: ScannError) -> Self {
-        Self(format!(":{}", e), e.line)
-    }
-}
+use crate::err::CompilerError;
+pub use scanner::{Scanner, Token};
+pub type Result<T> = result::Result<T, CompilerError>;
 
 struct Parser<'a> {
     previous: Token,
@@ -66,8 +52,30 @@ impl Parser<'_> {
             _ => format!(" at '{}'", token.extract()),
         };
         out.push_str(&format!(": {}\n", message));
-        Err(Error(out, token.line))
+        Err(CompilerError::new(&out, token.line))
     }
+
+    fn synchronize(&mut self) {
+        while self.current.id != TokenType::EOF {
+            if self.previous.id == TokenType::Semicolon {
+                return;
+            }
+
+            match self.current.id {
+                TokenType::If
+                | TokenType::Def
+                | TokenType::Bind
+                | TokenType::Print
+                | TokenType::Return => return,
+                _ => {
+                    self.next();
+                }
+            }
+        }
+    }
+}
+
+impl Parser<'_> {
     fn consume(&mut self, id: TokenType, message: &str) -> Result<()> {
         if self.current.id == id {
             self.next();
@@ -83,20 +91,48 @@ impl Parser<'_> {
         self.emit_byte(byte1.into());
         self.emit_byte(byte2);
     }
-    fn emit_constant<T: Into<Value>>(&mut self, value: T) {
+    fn emit_constant<T: Into<Type>>(&mut self, value: T) {
         let loc = self.current_chunk().constant(value);
         self.emit_bytes(OpCode::Constant, loc);
     }
+
     fn current_chunk(&mut self) -> &mut Chunk {
         &mut self.chunk
     }
+
     fn emit_return(&mut self) {
         self.emit_byte(OpCode::Return);
+    }
+
+    fn matches(&mut self, id: TokenType) -> bool {
+        if self.current.id != id {
+            return false;
+        }
+        self.next();
+        true
     }
     fn end_compiler(&mut self) {
         self.emit_return();
         #[cfg(feature = "print_code")]
-        println!("{}", self.chunk);
+        println!("{}", self.current_chunk());
+    }
+    fn identifier_constant(&mut self, name: Token) -> u8 {
+        let string = allocate_string!(name.extract());
+        self.current_chunk().constant(string)
+    }
+    fn define_variable(&mut self, global: u8) {
+        self.emit_bytes(OpCode::DefineGlobal, global);
+    }
+    fn named_variable(&mut self, name: Token, can_assign: bool) -> Result<()> {
+        let op = if can_assign && self.matches(TokenType::Equal) {
+            expression(self)?;
+            OpCode::SetGlobal
+        } else {
+            OpCode::GetGlobal
+        };
+        let arg = self.identifier_constant(name);
+        self.emit_bytes(op, arg);
+        Ok(())
     }
 }
 
@@ -104,8 +140,9 @@ pub fn compile(source: &str) -> Result<Chunk> {
     let mut parser = Parser::new(source);
     // Prime the pump.
     parser.next();
-    expression(&mut parser)?;
-    parser.consume(TokenType::EOF, "Expected end of expression.")?;
+    while !parser.matches(TokenType::EOF) {
+        declaration(&mut parser)?;
+    }
     parser.end_compiler();
     Ok(parser.chunk)
 }

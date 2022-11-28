@@ -1,6 +1,6 @@
 use super::{functions::*, scanner::TokenType, Parser, Result};
 
-pub(super) type ParseFn = fn(&mut Parser) -> Result<()>;
+pub(super) type ParseFn = fn(&mut Parser, bool) -> Result<()>;
 
 pub(super) struct ParseRule {
     pub(super) prefix: Option<ParseFn>,
@@ -67,7 +67,8 @@ pub(super) fn get_rule(id: TokenType) -> &'static ParseRule {
 }
 
 #[rustfmt::skip]
-const RULES: [ParseRule; 40] = [
+const RULES: [ParseRule; 43] = [
+    // Single character tokens
     define!{LeftParen   , Some(grouping), None        , Precedence::None       },
     define!{RightParen  , None          , None        , Precedence::None       },
     define!{LeftBrace   , None          , None        , Precedence::None       },
@@ -79,6 +80,7 @@ const RULES: [ParseRule; 40] = [
     define!{Slash       , None          , Some(binary), Precedence::Factor     },
     define!{Comma       , None          , None        , Precedence::None       },
     define!{Semicolon   , None          , None        , Precedence::None       },
+    // One or more character tokens
     define!{Equal       , None          , None        , Precedence::None       },
     define!{EqualEqual  , None          , Some(binary), Precedence::Equality   },
     define!{Less        , None          , Some(binary), Precedence::Comparison },
@@ -93,19 +95,24 @@ const RULES: [ParseRule; 40] = [
     define!{MinusColon  , None          , None        , Precedence::None       },
     define!{OrOr        , None          , None        , Precedence::None       },
     define!{AndAnd      , None          , None        , Precedence::None       },
+    // Literals
     define!{Number      , Some(number)  , None        , Precedence::None       },
-    define!{String      , None          , None        , Precedence::None       },
-    define!{Identifier  , None          , None        , Precedence::None       },
+    define!{String      , Some(string)  , None        , Precedence::None       },
+    define!{Identifier  , Some(variable), None        , Precedence::None       },
     define!{CharLit     , None          , None        , Precedence::None       },
+    // Keywords
     define!{True        , Some(literal) , None        , Precedence::None       },
     define!{False       , Some(literal) , None        , Precedence::None       },
     define!{Struct      , None          , None        , Precedence::None       },
     define!{Enum        , None          , None        , Precedence::None       },
     define!{Char        , None          , None        , Precedence::None       },
     define!{Int         , None          , None        , Precedence::None       },
+    define!{If          , None          , None        , Precedence::None       },
     define!{Nil         , Some(literal) , None        , Precedence::None       },
     define!{Typedef     , None          , None        , Precedence::None       },
     define!{Bind        , None          , None        , Precedence::None       },
     define!{Def         , None          , None        , Precedence::None       },
+    define!{Print       , None          , None        , Precedence::None       },
+    define!{Return      , None          , None        , Precedence::None       },
     define!{EOF         , None          , None        , Precedence::None       },
 ];

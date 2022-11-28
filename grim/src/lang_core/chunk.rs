@@ -1,11 +1,11 @@
-use super::Value;
-use crate::runtime::Ip;
+use super::Type;
+use crate::vm::Ip;
 use std::fmt::Display;
 #[derive(Default, Debug)]
 pub struct Chunk {
     pub code: Vec<u8>,
     pub lines: Line,
-    pub constants: Vec<Value>,
+    pub constants: Vec<Type>,
 }
 
 impl Chunk {
@@ -18,7 +18,7 @@ impl Chunk {
         self.lines.push(line);
     }
 
-    pub fn constant<T: Into<Value>>(&mut self, value: T) -> u8 {
+    pub fn constant<T: Into<Type>>(&mut self, value: T) -> u8 {
         self.constants.push(value.into());
         (self.constants.len() - 1) as u8
     }
@@ -101,5 +101,6 @@ macro_rules! op_code {
 
 op_code! { Return, 0, Constant, 1, Add, 2, Subtract, 3,
 Divide, 4, Multiply, 5, Negate, 6, Nil, 7, True, 8,
-False, 9, Not, 10, Equal, 11, Greater, 12,
-Less, 13 }
+False, 9, Not, 10, Equal, 11, Greater, 12, Less, 13,
+Print, 90, Pop, 14, DefineGlobal, 15, GetGlobal, 16,
+SetGlobal, 17 }

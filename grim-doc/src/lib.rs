@@ -34,51 +34,61 @@
 
 # Backus-Naur form
 ```skip
-NUMBER     -> ( 0..9 )* ;
-CHAR       -> "'" * "'" ;
-STRING     -> "\"" ( CHAR )* "\"" ;
-IDENTIFIER -> ( "a".."z" | "A".."Z" | NUMBER | "_" )* ;
+NUMBER         -> ( 0..9 )* ;
+CHAR           -> "'" * "'" ;
+STRING         -> "\"" ( CHAR )* "\"" ;
+IDENTIFIER     -> ( "a".."z" | "A".."Z" | NUMBER | "_" )* ;
 
-program    -> ( ( variable | typedef ) ";" )?* "main () {" ( expression ";" )* "}" ;
+program        -> ( ( variable | typedef ) ";" )?* "main () {" ( declaration  )* "}" ;
 
-function   -> "def" IDENTIFIER "(" ( IDETIFIER typeDef )?* ")" type "{" ( expression ";" )* "}" ;
+function       -> "def" IDENTIFIER "(" ( IDETIFIER typeDef )?* ")" type "{" ( expression ";" )* "}" ;
 
-expression -> literal
-            | unary
-            | binary
-            | grouping
-            | array
-            | struct
-            | enum
-            | typedef
-            | variable
-            | call ;
+statement      -> expressionStmt
+                | printStmt
+                | function
+                | ifStmt
+                ;
 
-call       -> IDENTIFIER "(" ( IDENTIFIER | expression ) "," )?* ")" ;
+declaration    -> varDecl
+                | statement
+                | array
+                | struct
+                | enum
+                | typedef ;
 
-variable   -> "bind" IDENTIFIER typeDef "=" expression ";" ;
+expressionStmt -> expression ";" ;
+expression     -> literal
+                | unary
+                | binary
+                | grouping
+                | call ;
 
-typedef    -> "typedef" ( "struct" | "enum" ) IDENTIFIER "{" ( IDENTIFIER typeId ( "," )? )* "};" ;
+ifStmt         -> todo ;
+call           -> IDENTIFIER "(" ( IDENTIFIER | expression ) "," )?* ")" ;
 
-typeId     -> "-:" ( "int" | "char" | "String" |  "nil" | type
-                   | "[" typeId ";" NUMBER "]"
-                   | ( "struct" | "enum" ) IDINTIFIER ) ;
+variable       -> "bind" IDENTIFIER typeDef "=" expression ";" ;
 
-enum       -> "enum" IDENTIFIER "{" ( IDENTIFIER ("=" NUMBER)? ",")* "}" ;
+typedef        -> "typedef" ( "struct" | "enum" ) IDENTIFIER "{" ( IDENTIFIER typeId ( "," )? )* "};" ;
 
-struct     -> "struct" IDINTIFIER "{" ( IDENTIFIER typeId )* "}" ;
+typeId         -> "-:" ( "int" | "char" | "String" |  "nil" | type
+                       | "[" typeId ";" NUMBER "]"
+                       | ( "struct" | "enum" ) IDINTIFIER ) ;
 
-array      -> "[" ( CHAR | NUMBER ) ( ".." ( CHAR | NUMBER ) )? "]" ;
+enum           -> "enum" IDENTIFIER "{" ( IDENTIFIER ("=" NUMBER)? ",")* "}" ;
 
-grouping   -> "(" expression ")" ;
+struct         -> "struct" IDINTIFIER "{" ( IDENTIFIER typeId )* "}" ;
 
-binary     -> expression operator expression ;
+array          -> "[" ( CHAR | NUMBER ) ( ".." ( CHAR | NUMBER ) )? "]" ;
 
-operator   -> "==" | "!=" | "<" | "<=" | ">" | ">="
-            | "+"  | "-"  | "*" | "/" ;
+grouping       -> "(" expression ")" ;
 
-unary      -> ( "-" | "!" ) expression ;
+binary         -> expression operator expression ;
 
-literal    -> NUMBER | STRING | "true" | "false" |"nil" ;
+operator       -> "==" | "!=" | "<" | "<=" | ">" | ">="
+                | "+"  | "-"  | "*" | "/" ;
+
+unary          -> ( "-" | "!" ) expression ;
+
+literal        -> NUMBER | STRING | "true" | "false" |"nil" ;
 ```
 */

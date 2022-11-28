@@ -1,36 +1,19 @@
-use std::{fmt::Display, marker::PhantomData, result};
-#[derive(Debug)]
-pub struct Error {
-    message: String,
-    pub line: usize,
-}
-impl Error {
-    fn new(message: &str, line: usize) -> Result<Token> {
-        Err(Self {
-            message: message.into(),
-            line,
-        })
-    }
-}
-impl Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
+use crate::err::ScannerError;
+use std::{marker::PhantomData, result};
 macro_rules! error {
     ( $line: expr, $message: tt, $( $value: expr ),* ) => {
         {
 
             let message = format!($message, $($value,)*);
-            Error::new(&message, $line)
+            ScannerError::new(&message, $line)
         }
     };
 
     ( $line: expr, $message: tt ) => {
-        Error::new($message, $line)
+        ScannerError::new($message, $line)
     };
 }
-type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, ScannerError>;
 pub struct Scanner<'a> {
     start: *const u8,
     current: *const u8,
@@ -175,7 +158,13 @@ impl Scanner<'_> {
         unsafe { Some(self.current.add(1).read() as char) }
     }
     fn string(&mut self) -> Result<Token> {
-        while !self.is_at_end() && self.peek() != Some('"') {
+        while !self.is_at_end() {
+            if self.peek() == Some('"') {
+                break;
+            }
+            if self.peek() == Some('\\') {
+                self.advance();
+            }
             if let Some(n) = self.advance() {
                 if n == '\n' {
                     self.line += 1;
@@ -259,13 +248,19 @@ impl Scanner<'_> {
             'd' => (1, 2, "ef", TokenType::Def),
             'e' => (1, 3, "num", TokenType::Enum),
             'f' => (1, 4, "alse", TokenType::False),
-            'i' => (1, 2, "nt", TokenType::Int),
+            'i' => match unsafe { self.start.add(1).read() as char } {
+                'n' => (2, 1, "t", TokenType::Int),
+                'f' => (1, 1, "f", TokenType::If),
+                _ => return TokenType::Identifier,
+            },
             'n' => (1, 2, "il", TokenType::Nil),
+            'p' => (1, 4, "rint", TokenType::Print),
             't' => match unsafe { self.start.add(1).read() as char } {
                 'r' => (2, 2, "ue", TokenType::True),
                 'y' => (2, 5, "pedef", TokenType::Typedef),
                 _ => return TokenType::Identifier,
             },
+            'r' => (1, 5, "eturn", TokenType::Return),
             's' => (1, 4, "ruct", TokenType::Struct),
 
             // struct
@@ -349,10 +344,13 @@ pub enum TokenType {
     Enum,
     Char,
     Int,
+    If,
     Nil,
     Typedef,
     Bind,
     Def,
+    Print,
+    Return,
     #[default]
     EOF,
 }
